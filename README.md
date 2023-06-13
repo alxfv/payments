@@ -1,0 +1,3 @@
+# Quick start
+
+./run.sh
