@@ -1,4 +1,6 @@
-# Quick start
+# Integration and end-to-end tests.
+
+## Quick start
 
 ```shell
 python -m venv .venv

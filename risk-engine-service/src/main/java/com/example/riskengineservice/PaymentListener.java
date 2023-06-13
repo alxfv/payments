@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,17 +16,22 @@ public class PaymentListener {
     public static final String PAYMENTS_TOPIC = "new_payments";
     private final Logger logger = LoggerFactory.getLogger(PaymentListener.class);
 
+    private final PaymentRepository paymentRepository;
+
     @Autowired
-    private PaymentRepository paymentRepository;
+    private final RiskEngine riskEngine;
+
+    public PaymentListener(PaymentRepository paymentRepository, RiskEngine riskEngine) {
+        this.paymentRepository = paymentRepository;
+        this.riskEngine = riskEngine;
+    }
+
 
     @KafkaListener(id = "risk_engine_group", topics = PAYMENTS_TOPIC)
-    public void listen(NewPaymentEvent newPayment) {
+    public void listen(NewPaymentEvent newPayment, Acknowledgment ack) {
         logger.info("Received from payments: " + newPayment);
 
         Payment payment = createPaymentFromEvent(newPayment);
-
-        RiskEngine riskEngine = new RiskEngine();
-
         payment.setRiskScore(riskEngine.generateRiskScore(payment));
 
         try {
@@ -34,6 +40,7 @@ public class PaymentListener {
         } catch (DataIntegrityViolationException e) {
             logger.info("Payment already in the database: " + e);
         }
+        ack.acknowledge();
     }
 
     private static Payment createPaymentFromEvent(NewPaymentEvent newPayment) {

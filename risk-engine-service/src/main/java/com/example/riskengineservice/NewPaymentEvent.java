@@ -11,9 +11,6 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class NewPaymentEvent {
-//	@Getter
-//	private String paymentId;
-
     @Getter
     @Setter
     private String userId;

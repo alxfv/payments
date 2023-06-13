@@ -8,6 +8,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.math.BigDecimal;
@@ -21,6 +22,9 @@ public class PaymentListenerTest {
 
     @Mock
     private NewPaymentEvent newPaymentEvent;
+
+    @Mock
+    private Acknowledgment ack;
 
     @Autowired
     private PaymentListener paymentListener;
@@ -37,8 +41,32 @@ public class PaymentListenerTest {
 
     @Test
     void listen() {
-        paymentListener.listen(newPaymentEvent);
+        paymentListener.listen(newPaymentEvent, ack);
 
         Mockito.verify(paymentRepository, Mockito.times(1)).save(Mockito.any(Payment.class));
+
+        Mockito.verify(ack, Mockito.times(1)).acknowledge();
+    }
+
+    @Test
+    void shouldNotAcknowledgeWhenSaveFailsWithUnexpectedException() {
+        // Arrange
+        PaymentRepository mockPaymentRepository = Mockito.mock(PaymentRepository.class);
+        Mockito.when(mockPaymentRepository.save(Mockito.any(Payment.class))).thenThrow(IllegalArgumentException.class);
+
+        Acknowledgment mockAck = Mockito.mock(Acknowledgment.class);
+        RiskEngine mockRiskEngine = Mockito.mock(RiskEngine.class);
+
+        PaymentListener paymentListener = new PaymentListener(mockPaymentRepository, mockRiskEngine);
+
+        // Act
+        try {
+            paymentListener.listen(newPaymentEvent, mockAck);
+        } catch (IllegalArgumentException ex) {
+            // Expected exception
+        }
+
+        // Assert
+        Mockito.verify(mockAck, Mockito.times(0)).acknowledge();
     }
 }
